@@ -101,7 +101,13 @@ class NimAI():
         Return the Q-value for the state `state` and the action `action`.
         If no Q-value exists yet in `self.q`, return 0.
         """
-        raise NotImplementedError
+        for q in self.q:
+            if q == (state, action):
+                if self.q[q]:
+                    return self.q[q]
+                else:
+                    return 0
+
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
         """
@@ -118,7 +124,16 @@ class NimAI():
         `alpha` is the learning rate, and `new value estimate`
         is the sum of the current reward and estimated future rewards.
         """
-        raise NotImplementedError
+        # If old_q does't exist
+        if old_q:
+            pass
+        else:
+            old_q = 0
+
+        # Compute the new value using the formula
+        new_value = old_q + self.alpha * ( (reward + future_rewards) - old_q )
+        # Set new value
+        self.q[tuple(state), action] = new_value
 
     def best_future_reward(self, state):
         """
@@ -130,8 +145,31 @@ class NimAI():
         Q-value in `self.q`. If there are no available actions in
         `state`, return 0.
         """
-        raise NotImplementedError
+        # Get all possible actions for the state
+        possible_actions = list(Nim.available_actions(state))
 
+        # If no actions
+        if len(possible_actions) == 0:
+            return 0
+
+        highest_value = 0
+        highest_action = 0
+        
+        # For each q in all self.q
+        for q in self.q:
+            # IF matches the state and possible actions
+            if q[0] == tuple(state) and q[1] in possible_actions:
+                # If value not none
+                if self.q[q] != None:
+                    if self.q[q] > highest_value:
+                        highest_value = self.q[q]
+                        highest_action = q[1]
+                else:
+                    if highest_value == 0:
+                        highest_action = q[1]
+
+        return highest_value      
+        
     def choose_action(self, state, epsilon=True):
         """
         Given a state `state`, return an action `(i, j)` to take.
@@ -147,8 +185,28 @@ class NimAI():
         If multiple actions have the same Q-value, any of those
         options is an acceptable return value.
         """
-        raise NotImplementedError
+        # Get all possible actions in the state 
+        possible_actions = list(Nim.available_actions(state))
 
+        
+        if epsilon == False:
+            q_paris = {}
+            # Go through all q in self.q
+            for q in self.q:
+                # If matches the state ande possible actions
+                if q[0] == tuple(state) and q[1] in possible_actions:
+                    if self.q[q]:
+                        q_paris[q[1]] = self.q[q]
+                    else:
+                        q_paris[q[1]] = 0
+            # Get max value 
+            max_val = max(q_paris, key = lambda k: q_paris[k])
+            return max_val
+        if epsilon == True:
+            # Get random action with probability self.epsilon
+            probabilites = [self.epsilon for e in range(len(possible_actions))]
+            action = random.choices(possible_actions, probabilites)
+            return action[0]
 
 def train(n):
     """
@@ -156,7 +214,6 @@ def train(n):
     """
 
     player = NimAI()
-
     # Play n games
     for i in range(n):
         print(f"Playing training game {i + 1}")
@@ -174,7 +231,7 @@ def train(n):
             # Keep track of current state and action
             state = game.piles.copy()
             action = player.choose_action(game.piles)
-
+            
             # Keep track of last state and action
             last[game.player]["state"] = state
             last[game.player]["action"] = action
@@ -215,7 +272,7 @@ def play(ai, human_player=None):
     `human_player` can be set to 0 or 1 to specify whether
     human player moves first or second.
     """
-
+    
     # If no player order set, choose human's order randomly
     if human_player is None:
         human_player = random.randint(0, 1)
